@@ -1,0 +1,40 @@
+CREATE INDEX TEscalonada_IX ON TEscalonada (IdCredito);
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TABLE FACTURA'; -- 107234
+EXCEPTION WHEN OTHERS THEN NULL;
+END;
+/
+
+CREATE TABLE FACTURA AS
+SELECT 
+    IdCredito,
+    COUNT(FechaPagoFacturado) AS NumFac
+FROM Factura
+WHERE SUBSTR(IdCredito,1,2) IN ('83','91')
+GROUP BY IdCredito;
+
+
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TABLE TEscalonada'; -- 107234
+EXCEPTION WHEN OTHERS THEN NULL;
+END;
+/
+
+CREATE TABLE TEscalonada AS
+SELECT ppv.IdCredito
+       ,NumeroTramo1
+       ,CodigoTasa1
+       ,NumeroTramo2
+       ,CodigoTasa2
+FROM WS_Credito_PRD@BDPremierOriginacion wcr 
+INNER JOIN WS_PlanPagosVehiculos@BDPremierOriginacion ppv 
+    ON ppv.IdCredito = wcr.Consecutivo AND LENGTH(ppv.Exito) > 0
+LEFT JOIN (SELECT Caso, PlanFinanciacion FROM Originacion@${Server}) Ori 
+    ON Ori.Caso = wcr.Caso
+LEFT JOIN (SELECT IdPlanFinanciacion, Valor FROM PlanFinanciacion@${Server}) PF 
+    ON PF.IdPlanFinanciacion = Ori.PlanFinanciacion
+WHERE PF.Valor LIKE '%ESCALONADA%'
+  AND (LENGTH(wcr.Exito) > 0 OR wcr.Error = 'EL CREDITO YA EXISTE EN LA BASE')
+  AND TRUNC(wcr.FechaProceso) >= DATE '2025-03-01';
+
+CREATE INDEX TEscalonada_IX ON TEscalonada (IdCredito);
