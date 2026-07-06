@@ -1,0 +1,33 @@
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TABLE SolicitudCredito';
+EXCEPTION WHEN OTHERS THEN NULL;
+END;
+/
+
+CREATE TABLE SolicitudCredito AS
+SELECT 
+    cre.NumCreditoBanco AS id
+    ,cre.IdTipoIdentificacion
+    ,cre.NumeroIdentificacion
+    ,Solicitud
+    ,FechaDesembolso
+    ,Cre.ValorOriginalPrestamo
+    ,cre.ValorPagoTotal
+    ,Cre.Plazo *
+     CASE Cre.UnidadTiempo 
+        WHEN 'A' THEN 12 
+        WHEN 'S' THEN 6 
+     ELSE 1 END AS PLAZO
+    ,Cre.FechaUltimoPagoRealizado
+    ,Cre.FechaCuotaMasAntiguaPagar
+    ,CASE
+        WHEN Cre.Id LIKE '10%' THEN 'Credito de Consumo Dirigido'
+        WHEN Cre.Id LIKE '91%' THEN 'Credito de Consumo Dirigido'
+        ELSE 'Credito de Vehiculo'
+     END AS PRODUCTO
+    ,cre.IdSucursal
+    ,cre.DiasMora
+    ,Cre.MarcaDebitoAutomatico
+    ,Cre.IdTasa
+FROM Credito@BDPremierPrueba Cre 
+WHERE Cre.SaldoPrestamo > 0 AND SUBSTR(Cre.Id,1,2) IN ('83','10','91');
