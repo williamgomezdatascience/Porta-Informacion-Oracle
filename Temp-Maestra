@@ -1,0 +1,36 @@
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TABLE Info_Maestra';
+EXCEPTION WHEN OTHERS THEN NULL;
+END;
+/
+
+CREATE TABLE Info_Maestra AS
+SELECT 
+    cre.*
+    ,ori.Cliente
+    ,cl.TipodeActividad
+    ,cl.FechadeExpedicion
+    ,cl.Nacionalidad
+    ,InfL.FechadeIngreso
+    ,NVL(nac.codigo,'170') AS codigo
+    ,Cont.CiudadResidencia
+    ,Cont.idClienteContacto
+    ,lna.idCiudades
+    ,lna.id1 
+    ,InfF.EgresosMensuales
+    ,InfF.ManejaRecursosdelEstado
+    ,cl.ciudaid1
+    ,ciu3.id1 AS ciudaid3
+FROM SolicitudCredito cre
+LEFT JOIN (SELECT Caso, Cliente FROM Originacion@${Server}) ori ON ori.Caso = cre.Solicitud
+--LEFT JOIN Operaciones@[180.26.149.41].OriginacionPROD_SNAPSHOT Ope ON ori.Operaciones = Ope.IdOperaciones
+LEFT JOIN ClienteBZ cl ON cl.IdCliente = ori.Cliente
+LEFT JOIN (SELECT IdInformacionLaboral, FechadeIngreso FROM InformacionLaboral@${Server}) InfL ON cl.InformacionLaboral = InfL.IdInformacionLaboral
+LEFT JOIN (SELECT IdNacionalidad, Codigo FROM Nacionalidad@${Server}) nac ON nac.IdNacionalidad = cl.Nacionalidad
+LEFT JOIN (SELECT IdClienteContacto, CiudadResidencia FROM ClienteContacto@${Server}) Cont ON cl.InformacionContacto = Cont.IdClienteContacto
+LEFT JOIN (SELECT IdCiudades, Id1 FROM Ciudades_EK@${Server}) lna ON cl.LugardeNacimiento = lna.IdCiudades
+LEFT JOIN (SELECT ManejaRecursosdelEstado
+                  ,EgresosMensuales
+                  ,IdInformacionFinanciera 
+           FROM InformacionFinanciera@${Server}) InfF ON cl.InformacionFinanciera = InfF.IdInformacionFinanciera
+LEFT JOIN Ciudades ciu3 ON ciu3.IdCiudades = Cont.CiudadResidencia;
