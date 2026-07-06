@@ -1,0 +1,11 @@
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TABLE Ciudades';
+EXCEPTION WHEN OTHERS THEN NULL;
+END;
+/
+
+CREATE TABLE Ciudades AS
+SELECT 
+    IdCiudades
+    ,Id1 
+FROM Ciudades_EK@${Server};
