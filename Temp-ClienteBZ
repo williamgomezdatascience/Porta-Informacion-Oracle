@@ -1,0 +1,20 @@
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TABLE ClienteBZ';
+EXCEPTION WHEN OTHERS THEN NULL;
+END;
+/
+
+CREATE TABLE ClienteBZ AS
+SELECT 
+    TipodeActividad
+    ,FechadeExpedicion
+    ,Nacionalidad
+    ,IdCliente
+    ,InformacionContacto
+    ,InformacionLaboral 
+    ,LugardeNacimiento
+    ,InformacionFinanciera
+    ,ciu1.Id1 AS ciudaid1
+FROM Cliente@${Server} cl
+LEFT JOIN Ciudades ciu1 ON ciu1.IdCiudades = cl.LugardeNacimiento
+WHERE NumeroIdentificacion IS NOT NULL AND NombreConcatenado NOT LIKE '%Prueba%'; --941808
