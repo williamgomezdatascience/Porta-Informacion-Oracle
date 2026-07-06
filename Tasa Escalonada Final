@@ -1,0 +1,24 @@
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TABLE TEscalonada2'; -- 107234
+EXCEPTION WHEN OTHERS THEN NULL;
+END;
+/
+
+CREATE TABLE TEscalonada2 AS
+SELECT 
+    plf.id
+    ,NVL(plf.CodigoTasa, plf.IdTasa) AS Id_Tasa_Actual
+    ,plf.IdTasa AS Tramo_2
+    ,SUBSTR(TO_CHAR(ROUND(Tas.Efectiva,2)),1,5) AS Efectiva
+FROM (
+    SELECT 
+       cre.id
+       ,cre.FechaPrimeraCuota
+       ,CASE WHEN fac.NumFac < pv.NumeroTramo2 THEN pv.CodigoTasa1 ELSE pv.CodigoTasa2 END AS CodigoTasa
+       ,cre.IdTasa
+    FROM Credito cre
+       LEFT JOIN FACTURA fac ON fac.IdCredito = cre.Id 
+       LEFT JOIN TEscalonada pv ON pv.IdCredito = cre.Id
+    WHERE SUBSTR(fac.IdCredito,1,2) IN ('83','91')
+     ) plf
+LEFT JOIN Tasas Tas ON NVL(plf.CodigoTasa, plf.IdTasa) = Tas.Id;
