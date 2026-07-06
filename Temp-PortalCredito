@@ -1,0 +1,230 @@
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TABLE PortalCredito';
+EXCEPTION WHEN OTHERS THEN NULL;
+END;
+/
+
+CREATE TABLE PortalCredito AS
+SELECT  
+    ori.id AS "OPERACION",
+    Cli.Nombre_RazonSocial AS "NOMBRE",
+    Ide.Nombre AS "TIPO IDENTIFICACION",
+    Cli.NumeroIdentificacion AS "DOCUMENTO IDENTIDAD",
+    Ocu.Nombre AS "OCUPACION",
+    ori.ValorOriginalPrestamo AS "VALOR DESEMBOLSO",
+    fac1.ValorCuotaMes AS "VALOR PRIMERA CUOTA",
+    NVL(Cuo1.L02VPG, 0) AS "VALOR CUOTA RESTANTE",
+    ori.ValorPagoTotal AS "SALDO",
+    CASE WHEN diasmora = 0 THEN 0 ELSE w7.l01vmp END AS "VALOR TOTAL MORA",
+    ori.PLAZO,
+    --CASE WHEN LENGTH(TO_CHAR(ROUND(w7.L13VEV,2))) = 10 THEN SUBSTR(TO_CHAR(ROUND(w7.L13VEV,2)),1,5) ELSE '0' || SUBSTR(TO_CHAR(ROUND(w7.L13VEV,2)),1,4) END AS "TASA DESEMBOLSADA",
+    tass.efectiva AS "TASA DESEMBOLSADA",
+    NVL(L3.VALORPAGO, 0) AS "VALOR ULTIMO PAGO",		   
+    CASE WHEN NVL(L3.VALORPAGO, 0) = 0 THEN '' ELSE NVL(TO_CHAR(ori.FechaUltimoPagoRealizado),'') END AS "FECHA ULTIMO PAGO",
+    ori.FechaCuotaMasAntiguaPagar AS "FECHA PROXIMA PAGO",
+    --CASE WHEN w7.l01vmp < 0 THEN 0 ELSE w7.l01vmp END AS "VALOR PROXIMO PAGO",
+
+    CAST(CASE WHEN w7.l01dmo = 0 THEN w7.l01cad 
+              WHEN w7.w07cpf = 0 AND w7.L01vsa > 0 AND w7.L01FPP < TO_CHAR(SYSDATE,'YYYYMMDD') THEN w7.l01vmp 
+              WHEN w7.l01dmo > 0 THEN (w7.l01cad + w7.l01vmp) END AS NUMBER) AS "VALOR PROXIMO PAGO"
+
+    ,Cli.CorreoEmail AS "EMAIL",
+    Cli.DireccionDomicilio AS "DIRECCION",
+    '' AS "CIUDAD2",
+    Cli.TelefonoDomicilio AS "CELULAR",
+    Cli.Celular AS "TELEFONO DOMICILIO",
+    Cli.Nat_TelefonoLabora AS "TELEFONO OFICINA",
+    ori.PRODUCTO,
+    RTRIM(Tip.Descripcion) AS "PLAN PAGO",
+    ori.DiasMora AS "DIAS MORA",
+    cli.Nat_Nombre1 primerNombre,
+    cli.Nat_Nombre2 segundoNombre,
+    Nat_Apellido1 primerApellido,
+    Nat_Apellido2 segundoApellido,
+    cli.FechaNacimiento fechaNacimiento,
+    Nat_FechaExpDocumento fechaExpedicion,
+    '' pais,
+    Nat_Sexo genero,
+    Nat_IdEstadoCivil estadoCivil,
+    '' nivelEducacion,
+    Nat_NombreEmpresaLabora Empresa,
+    '' cargo,
+    '' tipoContrato,
+    '' antiguedadLaboral,
+    '' fondoPensiones,
+    '' nitFondoPensiones,
+    '' tipoFondoPEnsiones,
+    '' empresaActividad,
+    '' nitEmpresa,
+    '' actividadEmpresa,
+    '' participacionEmpresa,
+    '' telefonoEmpresa,
+    '' ciudadEmpresa,
+    '' departamentoEmpresa,
+    '' tipoDireccionEmpresa,
+    '' direccionPrimerNumeroEmpresa,
+    '' direccionSegundoNumeroEmpresa,
+    '' direccionTercerNumeroEmpresa,
+    '' direccionComplementoEmpresa,
+    cli.Activos Activos,
+    cli.Pasivos Pasivos,
+    cli.Activos - cli.Pasivos Patrimonio,
+    IngresosMensuales Ingresos,
+    OtrosIngreso OtrosIngresos,
+    DetalleOtrosIngresos OrigenIngresos,
+    '' departamentoResidencia,
+    IdCiudadDomicilio ciudadResidencia,
+    '' tipoDireccionResidencia,
+    DireccionDomicilio direccionPrimerNumeroResidencia,
+    '' direccionSegundoNumeroResidencia,
+    '' direccionTercerNumeroResidencia,
+    '' direccionComplementoResidencia,
+    CorreoEmail CorreoElectronico,
+    Celular llamadasTelefonicas,
+    Celular mensajeTexto,
+    '' WhatsApp,
+    '' CorreoElectronico2,
+    '' LlamadasTelefonicas2,
+    '' mensajeTexto2,
+    '' WhatsApp2,
+    '' visitaPresencial
+    ,ori.fechadesembolso
+    ,10 AS LINEANEG
+    ,RPAD('0', (3 - LENGTH(TO_CHAR(cli.IdOcupacion))), '0') || TO_CHAR(cli.IdOcupacion) AS FUEINGRE
+    ,CASE WHEN ori.TipodeActividad IN (1,2,3,4,5,6,7,9,10,14) THEN '002'
+          WHEN ori.TipodeActividad = 11 THEN '006'
+          WHEN ori.TipodeActividad = 12 THEN '009'
+          WHEN ori.TipodeActividad = 13 THEN '008'
+          WHEN ori.TipodeActividad = 15 THEN '005'
+          ELSE '001' END AS FUEINGRE2
+    ,0 AS CODTASARETEFUENTE
+    ,100 AS CODGERENCUENTA
+    ,100 AS CODGERENCOBRANZ
+    ,0 AS CLASEPERSONA
+    ,NVL(sol.idsaladesembolso, ori.IdSucursal) AS SUCURSAL -- por validar
+    ,1 AS INDVINCULOCLIE
+    ,0 AS INDVINCULOTERCERO
+    ,0 AS INDVINCULOAGE
+    ,ori.codigo AS PAISNACIMIENTO
+    ,ori.id1 AS CIUDADNACIMIENTO
+    ,ori.codigo AS NACIONALI
+    ,ori.TipodeActividad AS CODIGOPROFESION
+    ,' ' AS TIPOIDREPLEGAL --null
+    ,' ' AS NUMIDREPLEGAL --null
+    ,' ' AS NOMREPLEGAL --null
+    ,' ' AS PAISCONSTITUCION --null
+    ,1 AS SECTORECONOMICO
+    ,' ' AS TELUNOREPLEGAL --null
+    ,' ' AS TELDOSREPLEGAL --null
+    ,NVL(ori.EgresosMensuales,'') AS TOTALEGRESOS 
+    ,NVL(TO_CHAR(ori.FechadeExpedicion,'YYYYMMDD'),'19000101') AS LUGAREXPEDICION
+    ,NVL(ori.ciudaid1,'') AS LUGARNACIMIENTO
+    ,NVL(CASE WHEN ori.Nacionalidad NOT IN (1,3) THEN 3 ELSE ori.Nacionalidad END, 1) AS NACIONALIDAD
+    ,' ' AS DETACTECONOMICA
+    ,NVL(TO_CHAR(ori.FechadeIngreso,'YYYYMMDD'),'19000101') AS FECHAINGRESOC02
+    ,' ' AS NEGOCIODOMICILIO --null
+    ,' ' AS NOMBRENEGOCIO --null
+    ,' ' AS FECHACREANEGOCIO --null
+    ,1 AS SECTORECONEGOCIO
+    ,'19000101' AS FECHAINGRESOC03
+    ,' ' AS DESCOTROSINGMENSU
+    ,NVL(ori.EgresosMensuales,'') AS TOTEGRESOSMENSUALES
+    ,' ' AS TOTALACTIVOSC03 --null
+    ,' ' AS TOTALPASIVOSC03 --null
+    ,(CASE (NVL(ori.ManejaRecursosdelEstado,'0')) WHEN 0 THEN 'N' WHEN 1 THEN 'S' ELSE 'N' END) AS ADMINRECURSOSPUBLIC
+    ,' ' AS RECONOCIPUBLICO --null
+    ,'19000101' AS FECHAINGRESO2C03
+    ,' ' AS DECLARARENTA --null
+    ,' ' AS NACIONALIDADC08 --null
+    ,' ' AS FECEXPEDICIONC08 --null
+    ,' ' AS LUGEXPEDICIONC08 --null
+    ,' ' AS FECNACIMIENTOC08
+    ,' ' AS LUGNACIMIENTOC08 --null
+    ,' ' AS PARTSOCIOSC08 --null
+    ,' ' AS PRIMERAPELLIDORPC08 --null
+    ,' ' AS SEGUNDOAPELLIDORPC08 --null
+    ,' ' AS NOMBRESRPC08 --null
+    ,' ' AS FECHAINGRESOC09  --null
+    ,' ' AS INGOPERACIONALES --null
+    ,' ' AS INGNOOPERACIONAL --null
+    ,' ' AS DESCINGNOOPERACI --null
+    ,' ' AS TOTALEGRESOSMENSUALES
+    ,' ' AS TOTALACTIVOSC09  --null
+    ,' ' AS TOTALPASIVOSC09 --null
+    ,' ' AS FECCORTEINFFINANCI --null
+    ,' ' AS ADMINISRECURSPUBLIC --null
+    ,' ' AS NUMERICO1 --null
+    ,1 AS NUMDIRECCION
+    ,NVL('Residencia','') AS NOMRAZONSOCIAL
+    ,' ' AS PAISRESIDENCIA --null
+    ,170 AS PAISRESIDENCIAFISCAL --esta quemado desde la tabla de integracion de cliente
+    ,0 AS CODIGOTIN
+    ,NVL(TO_CHAR(ori.id1),'') AS CODIGOCIUDAD
+    ,c.C45DI1 AS DIRLINEAUNO
+    ,c.C45DI2 AS DIRLINEADOS
+    ,c.C45DI3 AS DIRLINEATRES
+    ,'' AS DIRLINEACUATRO
+    ,c.C45DI4 AS EMAIL2
+    ,'' AS EMAIL3
+    ,c.C45ZTL AS ZONAPOSTAL
+    ,c.C45TE1 AS TELEFONOUNO
+    ,c.C45TE2 AS TELEFONODOS
+    ,c.C45TE3 AS TELEFONOTRES
+    ,c.C45TE4 AS TELEFONOCUATRO
+    ,c.C45FAX AS FAX
+    ,c.C45BEP AS TELEFONOBEEPER
+    ,c.C45CBE AS CODIGOBEEPER
+    ,W7.X01VMV AS InteresMora
+    ,NVL(NVL(hon.Honorarios,0) + NVL(hon.Iva_Honorarios,0),0) honorariosCobranza
+    ,CAST(ori.MarcaDebitoAutomatico AS NUMBER) EstadoDebitoAut
+--select *
+FROM Info_Maestra ori 
+LEFT JOIN Originacion_Solicitudes@reportes sol ON ori.Solicitud = sol.Solicitud
+LEFT JOIN Sucursal@BDPremierPrueba suc ON NVL(sol.idSalaDesembolso, ori.IdSucursal) = suc.id
+LEFT JOIN BSNC.tipodocumento@BDPremierPrueba td ON td.Id = ori.IdTipoIdentificacion
+LEFT JOIN Cliente@BDPremierPrueba Cli ON Cli.NumeroIdentificacion = ori.NumeroIdentificacion AND cli.IdTipoIdentificacion = ori.IdTipoIdentificacion
+LEFT JOIN Ocupacion@BDPremierPrueba Ocu ON Ocu.Id = Cli.IdOcupacion
+LEFT JOIN (SELECT l01npr
+                ,l01vmp
+                ,l01dmo
+                ,L13VIC
+                ,L13Vev
+                ,w07cpf
+                ,L01vsa
+                ,L01FPP
+                ,l01cad
+                ,ROUND(L13Vev,2) AS tasa
+                ,X01VMV 
+           FROM SIIF.SIIW07@BDPremierPrueba) W7 ON CAST(w7.l01npr AS NUMBER) = ori.id ---95453
+
+LEFT JOIN SIIL02 Cuo1 ON Cuo1.IdCredito = ori.Id
+
+LEFT JOIN SIIF.SIIC45@BDPremierPrueba c ON cli.NumeroIdentificacion = c.C45NID AND C45NOM LIKE 'RESIDENCIA'
+LEFT JOIN Factura@BDPremierPrueba Fac1 ON Fac1.idCredito = ori.Id AND fac1.idcobro = 1
+LEFT JOIN 	(SELECT 
+                L03NPR
+                , L03SEC Secuencia
+                ,(SUM(L03VL1) + SUM(L03VL2) + SUM(L03VL3) + SUM(L03VL4) + SUM(L03VL5) + SUM(L03VL6)) valorPago 
+            FROM SIIF.SIIL03@BDPremierPrueba s3
+            WHERE L03CTR IN (3,9,10) 
+            AND L03EST = 0 
+            AND L03SEC = (SELECT MAX(L03SEC) FROM SIIF.SIIL03@BDPremierPrueba WHERE L03NPR = s3.L03NPR AND L03EST = 0 AND L03CTR IN (3,9,10))
+            GROUP BY L03NPR, l03sec
+            ) L3 ON L3.L03NPR = ori.ID
+LEFT JOIN (SELECT 
+                Fac.idCredito AS IdCredito
+                , SUM(Fac.ValorMinimoPago) AS ValorMinimoPago 
+           FROM Factura@BDPremierPrueba Fac
+           WHERE Fac.Idestadofactura IN (1,2)
+           GROUP BY Fac.IdCredito) Pag ON Pag.IdCredito = ori.Id
+LEFT JOIN TipoPlan@BDPremierPrueba Tip ON Tip.Id = Cuo1.L02NPL
+LEFT JOIN TipoIdentificacion@BDPremierPrueba Ide ON Ide.Id = ori.IdTipoIdentificacion
+LEFT JOIN (SELECT 
+
+  CAST(Credito 		   AS NUMBER) Credito
+, CAST(Codigo_Producto AS NUMBER) Codigo_Producto
+, CAST(Dias_Mora	   AS NUMBER) Dias_Mora
+, CAST(Honorarios	   AS NUMBER) Honorarios
+, CAST(Iva_Honorarios  AS NUMBER) Iva_Honorarios
+FROM Honorarios_Veh) HON ON HON.Credito = ori.Id
+LEFT JOIN TEscalonada2 tass ON tass.Id = ori.id;
